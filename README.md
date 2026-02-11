@@ -22,7 +22,7 @@ For the full hybrid quantum-classical project, including all core, PyTorch, and 
 
 ```bash
 pip install -r requirements.txt
-
+```bash
 
 # Authors 
 Muhammad Saad, Wenjie Liu, Qingshan Wu
