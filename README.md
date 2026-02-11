@@ -16,7 +16,7 @@ requirements.txt: Contains all the packages required to run this code
 The current analysis included the initial rs-fMRI scans of 110 participants (54 healthy controls and 56 EMCI patients) in each of the multiple internal cohorts of ADNI (ADNI1, ADNI2, ADNIGO, and ADNI3). The resting-state fMRI images were selected specifically against three constant protocols: 140 time points with a repetition time (TR) of 3000 milliseconds and 48 anatomical slices. Based on this, the present investigation included resting-state fMRI data of the ADNI2, ADNIGO, and ADNI3 sub-cohorts. 
 
 
-## Installation and Setup
+# Installation and Setup
 
 For the full hybrid quantum-classical project, including all core, PyTorch, and quantum packages, you can install everything at once using the provided `requirements.txt` file:
 
