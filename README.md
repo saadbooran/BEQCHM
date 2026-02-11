@@ -8,7 +8,8 @@ BEQCHM-2.py: Python file containing a model used to train BEQCHM for condition 2
 
 BEQCHM-3.py: Python file containing a model used to train BEQCHM for condition 3. Three BE-VQCs are utilized in condition 3.
 
-Addition_Baseline(FCLs replaces BE-VQCs)\: Python files implementing baseline Model for condition 1, 2, and 3 in which BE-VQC is replaced with single, double and three Fully connected layers
+**Baseline.FCLs_replaces_BE_VQCs:** Python files implementing baseline models for conditions 1, 2, and 3, in which the BE-VQC is replaced with single, double, and triple fully connected layers.
+
 
 requirements.txt: Contains all the packages required to run this code 
 
