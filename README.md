@@ -3,12 +3,12 @@ Code of the paper title "Bessel-Encoded Hybrid Quantum–Classical Architecture 
 
 # Content
 BEQCHM-1.py: Python file containing a model used to train BEQCHM for condition 1. In this condition one Bessel Encoded Variational Quantum Circuit (BE-VQC) is utilized.
+
 BEQCHM-2.py: Python file containing a model used to train BEQCHM for condition 2. Two BE-VQCs are utilized in this condition.
+
 BEQCHM-3.py: Python file containing a model used to train BEQCHM for condition 3. Three BE-VQCs are utilized in condition 3.
 
-Baseline,FCL's_replaces_BE_VQC/AdditionalBL-1.py: Python file implementing baseline Model for condition 1, in which BE-VQC is replaced with single Fully connected layer.
-Baseline,FCL's_replaces_BE_VQC/AdditionalBL-2.py: Baseline Model for condition 2, in which BE-VQC is replaced with two Fully connected layers.
-Baseline,FCL's_replaces_BE_VQC/AdditionalBL-3.py: Baseline Model for condition 3, in which BE-VQC is replaced with three Fully connected layers.
+Addition_Baseline(FCLs replaces BE-VQCs)\: Python files implementing baseline Model for condition 1, 2, and 3 in which BE-VQC is replaced with single, double and three Fully connected layers
 
 requirements.txt: Contains all the packages required to run this code 
 
