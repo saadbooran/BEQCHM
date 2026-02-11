@@ -21,7 +21,8 @@ The current analysis included the initial rs-fMRI scans of 110 participants (54 
 For the full hybrid quantum-classical project, including all core, PyTorch, and quantum packages, you can install everything at once using the provided `requirements.txt` file:
 
 ```bash
-pip install -r requirements.txt ```
+pip install -r requirements.txt
+```
 
 # Authors 
 Muhammad Saad, Wenjie Liu, Qingshan Wu
