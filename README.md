@@ -1,5 +1,5 @@
 # Bessel Encoded Quantum-Classic Hybrid Model (BEQCHM)
-Code of the paper title "Bessel-Encoded Hybrid Quantum–Classical Architecture for Oscillatory Neural Time-Series Disease Classification" is present in this repository.
+Code of the paper title "BEQCHM: An efficient hybrid Bessel-encoded multi-topology VQC-GRU fusion model for neural oscillatory recognition and early MCI classification" is present in this repository.
 
 # Content
 BEQCHM-1.py: Python file containing a model used to train BEQCHM for condition 1. In this condition one Bessel Encoded Variational Quantum Circuit (BE-VQC) is utilized.
