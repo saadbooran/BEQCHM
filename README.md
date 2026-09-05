@@ -10,6 +10,10 @@ BEQCHM-3.py: Python file containing a model used to train BEQCHM for condition 3
 
 **Baseline.FCLs_replaces_BE_VQCs:** Python files implementing baseline models for conditions 1, 2, and 3, in which the BE-VQC is replaced with single, double, and triple fully connected layers.
 
+**Ablations:** Python files implementing ablation variants of the BE-VQC encoding and entanglement topology.
+
+**Classical_Baselines:** Python files implementing classical (non-quantum) baseline models for comparison.
+
 
 requirements.txt: Contains all the packages required to run this code 
 
