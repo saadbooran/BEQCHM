@@ -82,9 +82,7 @@ n_layers = 1
 dev = qml.device("default.qubit", wires=n_qubits)
 
 def bessel_encoding(x, order=1):
-    """
-    Apply Bessel function encoding to input features with NumPy 2.0 compatibility
-    """
+
     
     if torch.is_tensor(x):
         x_np = x.detach().cpu().numpy()
@@ -120,10 +118,7 @@ def bessel_encoding(x, order=1):
 
 @qml.qnode(dev, interface="torch", diff_method="parameter-shift")
 def enhanced_quantum_circuit(inputs, weights):
-    """
-    Single Quantum Circuit with Bessel function encoding
-    Using angle encoding with Bessel-transformed features for 4 qubits
-    """
+
     
     
     for i in range(n_qubits):
@@ -351,7 +346,6 @@ def validate(model, loader, criterion, device):
 
 def plot_training_curves(train_losses, test_losses, train_accuracies, test_accuracies, 
                         train_bal_accuracies, test_bal_accuracies, roi_number, fold, plots_folder):
-    """Plot and save training curves"""
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 10))
     
     

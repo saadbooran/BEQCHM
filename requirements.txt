@@ -1,16 +1,13 @@
-# Core packages
 numpy==1.25.2
 pandas==2.3.3
-scikit-learn==1.2.2
+scikit-learn==1.5.2
 imbalanced-learn==0.14.1
 matplotlib==3.10.8
-
-# PyTorch stack
+scipy==1.15.2
+PyWavelets==1.8.0
 torch==2.8.0
 torchvision==0.23.0
 torchaudio==2.8.0
-
-# PennyLane & Quantum packages
 pennylane==0.41.0
 autoray==0.6.11
 pennylane-lightning==0.42.0

@@ -77,12 +77,6 @@ class EarlyStopping:
 
 class ClassicalFeatureExtractor(nn.Module):
     def __init__(self, input_dim=4, output_dim=10, hidden_dim=32):
-        """
-        Classical replacement for the quantum circuit
-        - input_dim: number of input features (4 time points)
-        - output_dim: number of output features (matching quantum circuit output)
-        - hidden_dim: hidden layer dimension
-        """
         super().__init__()
         self.input_dim = input_dim
         self.output_dim = output_dim
@@ -101,7 +95,6 @@ class ClassicalFeatureExtractor(nn.Module):
         self._initialize_weights()
     
     def _initialize_weights(self):
-        """Initialize weights similar to quantum-inspired patterns"""
         for m in self.modules():
             if isinstance(m, nn.Linear):
                 
@@ -242,7 +235,6 @@ def validate(model, loader, criterion, device):
 
 def plot_training_curves(train_losses, test_losses, train_accuracies, test_accuracies, 
                         train_bal_accuracies, test_bal_accuracies, roi_number, fold, plots_folder):
-    """Plot and save training curves"""
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 10))
     
     
