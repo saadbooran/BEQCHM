@@ -144,8 +144,11 @@ def enhanced_quantum_circuit(inputs, weights):
     
     
  
-    qml.CNOT(wires=[n_qubits - 1, 0])
-    qml.CRY(weights[n_qubits - 1, 3], wires=[n_qubits - 1, 0])
+
+    for qubit in range(n_qubits):
+        next_qubit = (qubit + 1) % n_qubits
+        qml.CNOT(wires=[qubit, next_qubit])
+        qml.CRZ(weights[qubit, 3], wires=[qubit, next_qubit])
     
     
     measurements = []

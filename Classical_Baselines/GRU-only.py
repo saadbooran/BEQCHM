@@ -19,10 +19,6 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 
-import pennylane as qml
-from scipy.special import jv  
-
-
 BATCH_SIZE = 1
 EPOCHS = 100
 LEARNING_RATE = 3e-3
@@ -36,7 +32,7 @@ print("Using device:", DEVICE)
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-CONDITION_NAME = "Ablation_Topology_CircularOnly_VQC_3"  
+CONDITION_NAME = "GRU_Only_Results" 
 
 
 ROI_FOLDER_NAME = "ROIs"  
@@ -78,208 +74,39 @@ class EarlyStopping:
                 self.early_stop = True
 
 
-n_qubits = 4
-n_layers = 1  
-dev = qml.device("default.qubit", wires=n_qubits)
-
-def bessel_encoding(x, order=1):
-
-    
-    if torch.is_tensor(x):
-        x_np = x.detach().cpu().numpy()
-        return_tensor = True
-        original_device = x.device
-    else:
-        x_np = np.array(x, dtype=np.float64)
-        return_tensor = False
-    
-    
-    x_np = np.asarray(x_np, dtype=np.float64)
-    
-   
-    x_scaled = x_np * np.pi
-    
-    
-    try:
-        
-        result = jv(order, x_scaled)
-    except (TypeError, DeprecationWarning):
-        
-        if x_scaled.size > 1:
-            result = np.array([jv(order, float(val)) for val in x_scaled.flatten()])
-            result = result.reshape(x_scaled.shape)
-        else:
-            result = np.array(jv(order, float(x_scaled)))
-    
-    
-    if return_tensor:
-        return torch.tensor(result, dtype=torch.float32, device=original_device)
-    
-    return result.astype(np.float32)
-
-@qml.qnode(dev, interface="torch", diff_method="parameter-shift")
-def enhanced_quantum_circuit(inputs, weights):
-    
-    for i in range(n_qubits):
-        if i < len(inputs):
-           
-            feature_val_tensor = bessel_encoding(inputs[i])
-            
-            
-            if torch.is_tensor(feature_val_tensor):
-                feature_val = feature_val_tensor.item()
-            else:
-                feature_val = float(feature_val_tensor)
-        else:
-            feature_val = 0.0
-            
-        
-        qml.RY(feature_val * np.pi, wires=i)
-        qml.RZ(feature_val * 0.5 * np.pi, wires=i)
-    
-    
-    for qubit in range(n_qubits):
-        qml.RY(weights[qubit, 0], wires=qubit)
-        qml.RZ(weights[qubit, 1], wires=qubit)
-        qml.RX(weights[qubit, 2], wires=qubit)
-    
-    
-
-    for qubit in range(n_qubits):
-        next_qubit = (qubit + 1) % n_qubits
-        qml.CNOT(wires=[qubit, next_qubit])
-        qml.CRZ(weights[qubit, 3], wires=[qubit, next_qubit])
-    
-    
-    measurements = []
-    
-  
-    for i in range(n_qubits):
-        measurements.append(qml.expval(qml.PauliZ(i)))
-    
-   
-    for i in range(n_qubits - 1):
-        measurements.append(qml.expval(qml.PauliZ(i) @ qml.PauliZ(i + 1)))
-    
-   
-    parity_obs = qml.PauliZ(0)
-    for i in range(1, n_qubits):
-        parity_obs = parity_obs @ qml.PauliZ(i)
-    measurements.append(qml.expval(parity_obs))
-    
-    
-    for i in range(2):
-        measurements.append(qml.expval(qml.PauliX(i)))
-    
-    return measurements
-
-class EnhancedQuantumLayer(nn.Module):
-    def __init__(self, n_qubits, n_layers=1):
-        super().__init__()
-        self.n_qubits = n_qubits
-        self.n_layers = n_layers
-        self.weights = nn.Parameter(0.1 * torch.randn(n_qubits, 5))
-        
-    def forward(self, x):
-       
-        x_quantum = x[:, :4, :] 
-        
-        
-        x_quantum = x_quantum.reshape(x_quantum.shape[0], -1)  
-        
-        
-        if x_quantum.shape[1] < self.n_qubits:
-            padding = torch.zeros(x_quantum.shape[0], self.n_qubits - x_quantum.shape[1], 
-                                device=x_quantum.device)
-            x_quantum = torch.cat([x_quantum, padding], dim=1)
-        elif x_quantum.shape[1] > self.n_qubits:
-            x_quantum = x_quantum[:, :self.n_qubits]
-            
-        x_quantum = torch.tanh(x_quantum) * np.pi
-        
-        
-        batch_size = x_quantum.shape[0]
-        q_out_list = []
-        
-        for i in range(batch_size):
-            sample = x_quantum[i].float()
-            q_out = enhanced_quantum_circuit(sample, self.weights)
-            
-            
-            q_out_list_vals = []
-            for val in q_out:
-                if hasattr(val, 'detach'):
-                    
-                    q_out_list_vals.append(float(val.detach()))
-                else:
-                    
-                    q_out_list_vals.append(float(val))
-            
-            q_out_tensor = torch.tensor(q_out_list_vals, dtype=torch.float32, device=x.device)
-            q_out_list.append(q_out_tensor)
-        
-        q_out = torch.stack(q_out_list, dim=0)
-        return q_out
-
-
-class Quantum3GRUModel(nn.Module):
-    def __init__(self, input_size, hidden_size=80, output_dim=2, num_layers=NUM_LAYERS, n_qubits=4):
+class GRUOnlyModel(nn.Module):
+    def __init__(self, input_size=1, hidden_size=128, output_dim=2, num_layers=1):
         super().__init__()
         self.hidden_size = hidden_size
-        self.n_qubits = n_qubits
         
-        
-        self.gru = nn.GRU(input_size=input_size, hidden_size=hidden_size,
-                         num_layers=num_layers, batch_first=True)
-        
-        
-        self.quantum_circuit1 = EnhancedQuantumLayer(n_qubits)  
-        self.quantum_circuit2 = EnhancedQuantumLayer(n_qubits)  
-        self.quantum_circuit3 = EnhancedQuantumLayer(n_qubits)  
-        
-        
-        quantum_output_dim = 30
+
+        self.gru = nn.GRU(input_size=input_size, 
+                         hidden_size=hidden_size,
+                         num_layers=num_layers, 
+                         batch_first=True)
         
         
         self.classifier = nn.Sequential(
-            nn.Linear(hidden_size + quantum_output_dim, 64),  
+            nn.Linear(hidden_size, hidden_size),
             nn.ReLU(),
             nn.Dropout(DROPOUT),
-            nn.Linear(64, 32),  
+            nn.Linear(hidden_size, hidden_size//2),
             nn.ReLU(),
-            nn.Linear(32, output_dim)
+            nn.Linear(hidden_size//2, output_dim)
         )
 
     def forward(self, x):
- 
+
         batch_size, seq_len, features = x.shape
         
+
+        gru_out, _ = self.gru(x)  
         
-        q_out1 = self.quantum_circuit1(x[:, :4, :])  
-        
-        
-        q_out2 = self.quantum_circuit2(x[:, 4:8, :]) 
-        
-       
-        q_out3 = self.quantum_circuit3(x[:, 8:12, :])  
-        
-        
-        q_out = torch.cat([q_out1, q_out2, q_out3], dim=1)  
-        
-         
-        x_remaining = x[:, 12:, :]  
-        
-        
-        gru_out, _ = self.gru(x_remaining)  
-        
-        
+
         gru_last = gru_out[:, -1, :]  
         
-        
-        combined = torch.cat([gru_last, q_out], dim=1)  
-        
-        
-        logits = self.classifier(combined)
+
+        logits = self.classifier(gru_last)
         return logits
 
 
@@ -351,7 +178,7 @@ def plot_training_curves(train_losses, test_losses, train_accuracies, test_accur
 
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 10))
     
-    
+
     ax1.plot(train_losses, label='Train Loss', color='blue', linewidth=2)
     ax1.plot(test_losses, label='Test Loss', color='red', linewidth=2)
     ax1.set_title(f'ROI {roi_number:02d} - Fold {fold}: Loss Curves', fontsize=14, fontweight='bold')
@@ -360,7 +187,7 @@ def plot_training_curves(train_losses, test_losses, train_accuracies, test_accur
     ax1.legend()
     ax1.grid(True, alpha=0.3)
     
-    
+
     ax2.plot(train_accuracies, label='Train Accuracy', color='blue', linewidth=2)
     ax2.plot(test_accuracies, label='Test Accuracy', color='red', linewidth=2)
     ax2.set_title(f'ROI {roi_number:02d} - Fold {fold}: Accuracy Curves', fontsize=14, fontweight='bold')
@@ -369,7 +196,7 @@ def plot_training_curves(train_losses, test_losses, train_accuracies, test_accur
     ax2.legend()
     ax2.grid(True, alpha=0.3)
     
-    
+
     ax3.plot(train_bal_accuracies, label='Train Balanced Accuracy', color='blue', linewidth=2)
     ax3.plot(test_bal_accuracies, label='Test Balanced Accuracy', color='red', linewidth=2)
     ax3.set_title(f'ROI {roi_number:02d} - Fold {fold}: Balanced Accuracy Curves', fontsize=14, fontweight='bold')
@@ -378,7 +205,7 @@ def plot_training_curves(train_losses, test_losses, train_accuracies, test_accur
     ax3.legend()
     ax3.grid(True, alpha=0.3)
     
-    
+
     epochs = range(1, len(train_losses) + 1)
     ax4.plot(epochs, train_losses, label='Train Loss', color='blue', linestyle='-', linewidth=2)
     ax4.plot(epochs, test_losses, label='Test Loss', color='red', linestyle='-', linewidth=2)
@@ -392,7 +219,7 @@ def plot_training_curves(train_losses, test_losses, train_accuracies, test_accur
     
     plt.tight_layout()
     
-    
+
     plot_filename = f"ROI_{roi_number:02d}_Fold_{fold}_training_curves.png"
     plot_path = os.path.join(plots_folder, plot_filename)
     plt.savefig(plot_path, dpi=300, bbox_inches='tight')
@@ -414,7 +241,7 @@ def run_roi_file(file_path, roi_number, n_splits=3):
     y = df['research_group'].values
     X = df.drop(columns=['research_group']).values
     
-    
+
     if X.shape[1] != 140:
         print(f"Warning: Expected 140 time points, got {X.shape[1]}. Using first 140 time points.")
         X = X[:, :140]
@@ -423,7 +250,7 @@ def run_roi_file(file_path, roi_number, n_splits=3):
     X = X.reshape(X.shape[0], SEQ_LEN, FEATURES)
     print(f"Dataset shape: {X.shape}, Classes: {np.unique(y)}")
     print(f"Processing {SEQ_LEN} time series with {FEATURES} feature(s) per time point")
-    print(f"CONDITION 3: 3 Quantum Circuits (12 time points) + GRU (128 time points, 80 hidden)")
+    print(f"GRU ONLY MODEL: Processing ALL {SEQ_LEN} time points through GRU (no quantum)")
 
     skf = StratifiedKFold(n_splits=min(n_splits, len(np.unique(y)) * 2),
                           shuffle=True, random_state=42)
@@ -435,21 +262,21 @@ def run_roi_file(file_path, roi_number, n_splits=3):
         X_train, X_test = X[train_idx], X[test_idx]
         y_train, y_test = y[train_idx], y[test_idx]
         
-        
+
         train_unique, train_counts = np.unique(y_train, return_counts=True)
         test_unique, test_counts = np.unique(y_test, return_counts=True)
         print(f"Before balancing - Train: {dict(zip(train_unique, train_counts))}, Test: {dict(zip(test_unique, test_counts))}")
 
-        
+
         if len(np.unique(y_train)) > 1:
             X_train_flat = X_train.reshape(len(X_train), -1)
             
-            
+
             smote = SMOTE(random_state=42, k_neighbors=min(5, np.sum(y_train == 1) - 1, np.sum(y_train == 0) - 1))
             X_train_flat, y_train = smote.fit_resample(X_train_flat, y_train)
             X_train = X_train_flat.reshape(-1, SEQ_LEN, FEATURES)
             
-            
+
             train_unique_after, train_counts_after = np.unique(y_train, return_counts=True)
             print(f"After balancing  - Train: {dict(zip(train_unique_after, train_counts_after))}")
 
@@ -457,10 +284,10 @@ def run_roi_file(file_path, roi_number, n_splits=3):
         X_train = scaler.fit_transform(X_train.reshape(len(X_train), -1)).reshape(-1, SEQ_LEN, FEATURES)
         X_test = scaler.transform(X_test.reshape(len(X_test), -1)).reshape(-1, SEQ_LEN, FEATURES)
 
-        
+
         classes = np.unique(y_train)
         if len(classes) > 1:
-            
+
             cw = compute_class_weight("balanced", classes=classes, y=y_train)
             weight_vec = np.ones(int(classes.max()) + 1, dtype=float)
             for c, w in zip(classes, cw):
@@ -478,17 +305,16 @@ def run_roi_file(file_path, roi_number, n_splits=3):
         train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
         test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-       
+
         input_size = FEATURES
-        hidden_size = 80  
+        hidden_size = 128
         output_dim = 2
-        model = Quantum3GRUModel(input_size=input_size, 
-                               hidden_size=hidden_size, 
-                               output_dim=output_dim,
-                               num_layers=NUM_LAYERS,
-                               n_qubits=4).to(DEVICE)
+        model = GRUOnlyModel(input_size=input_size, 
+                           hidden_size=hidden_size, 
+                           output_dim=output_dim,
+                           num_layers=NUM_LAYERS).to(DEVICE)
         
-        
+
         criterion = nn.CrossEntropyLoss(weight=class_weights, label_smoothing=0.1)
         optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
@@ -530,7 +356,7 @@ def run_roi_file(file_path, roi_number, n_splits=3):
                 print(f"Early stopping at epoch {epoch+1}")
                 break
 
-        
+
         plot_training_curves(train_losses, test_losses, train_accuracies, test_accuracies,
                            train_bal_accuracies, test_bal_accuracies, roi_number, fold, PLOTS_SUBFOLDER)
 
@@ -541,7 +367,7 @@ def run_roi_file(file_path, roi_number, n_splits=3):
              train_tn, train_fp, train_fn, train_tp,
              test_tn, test_fp, test_fn, test_tp) = best_metrics
 
-            
+
             test_sensitivity = test_tp / (test_tp + test_fn) if (test_tp + test_fn) > 0 else 0.0
             test_specificity = test_tn / (test_tn + test_fp) if (test_tn + test_fp) > 0 else 0.0
             
@@ -588,7 +414,7 @@ def run_roi_file(file_path, roi_number, n_splits=3):
 
 
 if __name__ == "__main__":
-    
+
     if not os.path.exists(ROI_FOLDER):
         print(f"✗ Error: ROI folder not found at: {ROI_FOLDER}")
         print(f"Please create a folder named '{ROI_FOLDER_NAME}' in the same directory as this script")
@@ -631,10 +457,10 @@ if __name__ == "__main__":
                 'Filename': filename
             })
 
-   
+
     try:
         results_df = pd.DataFrame(all_results)
-        results_path = os.path.join(CONDITION_FOLDER, "ablation_topology_circularonly_vqc3_results.csv")
+        results_path = os.path.join(CONDITION_FOLDER, "gru_only_140ts_results.csv")
         results_df.to_csv(results_path, index=False)
         print(f"\n✓ Results saved to: {results_path}")
     except Exception as e:
@@ -643,13 +469,13 @@ if __name__ == "__main__":
     try:
         if all_detailed_metrics:
             detailed_df = pd.DataFrame(all_detailed_metrics)
-            detailed_path = os.path.join(CONDITION_FOLDER, "detailed_ablation_topology_circularonly_vqc3_metrics.csv")
+            detailed_path = os.path.join(CONDITION_FOLDER, "detailed_gru_only_metrics.csv")
             detailed_df.to_csv(detailed_path, index=False)
             print(f"✓ Detailed metrics saved to: {detailed_path}")
     except Exception as e:
         print(f"✗ Error saving detailed metrics: {e}")
 
-   
+
     if not results_df.empty:
         successful_runs = results_df[results_df['Status'] == 'Success']
         if not successful_runs.empty:
@@ -662,10 +488,9 @@ if __name__ == "__main__":
 
     print(f"\n=== Analysis Complete ===")
     print(f"Model Architecture:")
-    print("- CONDITION 3: 3 Quantum Circuits + GRU")
-    print("- Quantum Circuit 1: 4 time points (1-4) with Bessel encoding")
-    print("- Quantum Circuit 2: 4 time points (5-8) with Bessel encoding")
-    print("- Quantum Circuit 3: 4 time points (9-12) with Bessel encoding")
-    print("- GRU: 128 time points with 80 hidden size")
-    print("- Combined features from all three quantum circuits and GRU for classification")
+    print("- GRU ONLY MODEL (NO QUANTUM COMPONENTS)")
+    print("- Processing ALL 140 time points through GRU")
+    print("- Using last hidden state for classification")
+    print("- NO attention mechanism")
+    print("- NO quantum circuits")
     print(f"- All training plots saved to: {PLOTS_SUBFOLDER}")
